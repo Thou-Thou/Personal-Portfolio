@@ -7,8 +7,8 @@ How it works:
 
 - `next.config.mjs` exports the site as plain static files (`out/`), because the site has no
   server-side features.
-- `.github/workflows/deploy.yml` tells GitHub to install, build and publish those files on every
-  push to `main`.
+- `.github/workflows/deploy.yml` tells GitHub to install and build the site on every push to
+  `main`, and saves the finished files to the `gh-pages` branch, which GitHub Pages serves.
 
 You only need to do steps 1–4 once.
 
@@ -51,19 +51,22 @@ On Windows a GitHub sign-in window opens the first time you push. Sign in, and G
 
 ## 4. Turn on GitHub Pages
 
-1. In the repository, open **Settings → Pages**.
-2. Under **Build and deployment → Source**, choose **GitHub Actions**.
-3. Open the **Actions** tab. If the first run failed because Pages was not on yet, open it and click
-   **Re-run all jobs** (or **Deploy to GitHub Pages → Run workflow**).
-4. When the run shows a green tick (about 1–2 minutes), your site is live at:
+1. Open the **Actions** tab and wait for the **Deploy to GitHub Pages** run to show a green tick
+   (about 1–2 minutes). It creates a `gh-pages` branch containing the finished site.
+2. Open **Settings → Pages**. Under **Build and deployment**:
+   - **Source:** Deploy from a branch
+   - **Branch:** `gh-pages`, folder `/ (root)`, then click **Save**.
+
+   Do not pick `main`: that branch holds the source code, and GitHub would show the README instead.
+3. GitHub then runs its own **pages build and deployment** job (about 1 minute). Your site is live at:
 
    ```text
    https://<your-username>.github.io/portfolio/
    ```
 
-   The address is also shown on **Settings → Pages** and in the `deploy` job of the run.
+   The address is also shown at the top of **Settings → Pages**.
 
-The build reads the address from GitHub and adjusts the paths itself, so nothing else needs changing.
+The workflow sets the site's path from the repository name, so nothing else needs changing.
 
 ---
 
@@ -97,8 +100,8 @@ static files rather than a Node server.
    `<your-username>.github.io` for a subdomain like `www`, or GitHub's four `A` records for a root
    domain.
 3. When the DNS check passes, tick **Enforce HTTPS**.
-4. Run the workflow again (**Actions → Deploy to GitHub Pages → Run workflow**) so the build uses
-   the new address.
+4. In `.github/workflows/deploy.yml`, change `BASE_PATH` to `""` (the site now lives at the root of
+   your domain), then commit and push.
 
 ---
 
@@ -106,11 +109,13 @@ static files rather than a Node server.
 
 | Problem | Fix |
 | --- | --- |
-| Run fails at **configure-pages** or **deploy** with a "Pages not enabled" / 404 error | Do step 4: set **Settings → Pages → Source** to **GitHub Actions**, then re-run. |
+| Site shows the **README** instead of the portfolio | **Settings → Pages → Branch** is set to `main`. Change it to `gh-pages` / `(root)` and click **Save**. |
+| No `gh-pages` branch to choose | The **Deploy to GitHub Pages** run has not succeeded yet. Check the **Actions** tab and fix any error there first. |
+| Run fails at **Publish to the gh-pages branch** with "permission denied" | **Settings → Actions → General → Workflow permissions**: choose **Read and write permissions**, save, and re-run. |
 | Run fails at **npm run build** | Open the step's log. Run `npm run build` on your computer to see the same error, fix it and push again. |
 | `git push` is **rejected** | The GitHub repository was created with a README. Run `git pull origin main --allow-unrelated-histories`, then push again. |
 | Site shows **404** | Wait a minute after the first successful run, and check the address ends with `/portfolio/` (your repository name). |
-| Page loads **without styles** | The site address changed (for example you added a custom domain). Run the workflow again so the build picks up the new address. |
+| Page loads **without styles** | The site address changed (for example you added a custom domain). Update `BASE_PATH` in the workflow as described under "Use your own domain". |
 
 ---
 

@@ -1,5 +1,5 @@
-# Builds the portfolio and publishes it with GitHub Pages on every push to main.
-# One-time setup: repo Settings → Pages → Source: "GitHub Actions".
+# Builds the portfolio on every push to main and saves the finished site to the `gh-pages` branch.
+# One-time setup: repo Settings → Pages → Source: "Deploy from a branch", Branch: gh-pages / (root) → Save.
 name: Deploy to GitHub Pages
 
 on:
@@ -8,16 +8,14 @@ on:
   workflow_dispatch: # adds a "Run workflow" button in the Actions tab
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write # to push the built site to the gh-pages branch
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,26 +25,21 @@ jobs:
           node-version: 22
           cache: npm
 
-      - id: pages
-        uses: actions/configure-pages@v5
-
       - run: npm ci
 
       - run: npm run build
         env:
-          # "/<repo>" for https://<user>.github.io/<repo>/, empty for a custom domain or <user>.github.io
-          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # The site is served from https://<user>.github.io/<repo>/.
+          # If you add a custom domain, change this to an empty string: BASE_PATH: ""
+          BASE_PATH: /${{ github.event.repository.name }}
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish to the gh-pages branch
+        run: |
+          cd out
+          touch .nojekyll # stops GitHub's Jekyll from hiding the _next/ folder
+          git init -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy ${GITHUB_SHA}"
+          git push --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
