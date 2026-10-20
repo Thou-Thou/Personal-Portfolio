@@ -1,0 +1,41 @@
+# Builds the portfolio and publishes it with GitLab Pages.
+# - Merge requests: build only, to catch errors before merging.
+# - Default branch (main): build and deploy.
+
+image: node:22
+
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm run build
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+pages:
+  stage: deploy
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm run build
+    # GitLab Pages publishes the "public" folder; Next's own public/ assets are already copied into out/
+    - rm -rf public
+    - mv out public
+  artifacts:
+    paths:
+      - public
+  environment:
+    name: production
+    url: $CI_PAGES_URL
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
